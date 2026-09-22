@@ -1,0 +1,9 @@
+{
+  "name": "Luna Family Dashboard",
+  "short_name": "Family Chores",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f4f1ea",
+  "theme_color": "#355c52",
+  "icons": []
+}
