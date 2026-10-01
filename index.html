@@ -57,8 +57,10 @@ pinForm.onsubmit=async e=>{
   }
 
   pinModal.classList.add("hide");
-  document.querySelectorAll("main>section").forEach(x=>x.classList.add("hide"));
-  document.queryselector("#parent").classList.remove("hide");;
+document.querySelectorAll("main > section").forEach(x=>x.classList.add("hide"));
+const parentSection=document.getElementById("parent");
+parentSection.classList.remove("hide");
+renderParent();
 };
 
 changePin.onclick=async()=>{
