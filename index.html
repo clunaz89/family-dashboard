@@ -24,8 +24,77 @@ function renderProgress(){let e=document.querySelector("#progress"),p=document.q
 function renderParent(){let e=document.querySelector("#pending");e.innerHTML="";let n=0;for(let d=0;d<7;d++)KIDS.forEach((k,ki)=>CH.forEach((ch,ci)=>{if(status(ki,ci,d)==="pending"){n++;let r=document.createElement("div");r.className="row";r.innerHTML=`<div class=grow><b>${k.name}</b><div class=small>${ch.name} • ${dow[d]}</div></div><button class=primary>Approve</button>`;r.querySelector("button").onclick=()=>setStatus(ki,ci,d,"approved");e.appendChild(r)}}));if(!n)e.innerHTML="<div class=small>No chores waiting for approval.</div>";let l=document.querySelector("#library");l.innerHTML="";CH.forEach(ch=>{let r=document.createElement("div");r.className="row";r.innerHTML=`<div class=grow><b>${ch.name}</b><div class=small>${ch.points} point(s)</div></div><button>Delete</button>`;r.querySelector("button").onclick=async()=>{if(confirm("Disable this chore?")){await db.from("chores").update({active:false}).eq("id",ch.id);load()}};l.appendChild(r)})}
 function renderEvents(){let e=document.querySelector("#events");e.innerHTML="";EVENTS.forEach(x=>{let r=document.createElement("div");r.className="row";r.innerHTML=`<div class=grow><b>${x.title}</b><div class=small>${x.event_date}</div></div><button>Delete</button>`;r.querySelector("button").onclick=async()=>{await db.from("family_events").delete().eq("id",x.id);load()};e.appendChild(r)})}
 document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{document.querySelectorAll("main>section").forEach(x=>x.classList.add("hide"));document.querySelector("#"+b.dataset.tab).classList.remove("hide");document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));b.classList.add("active")});
-parentBtn.onclick=()=>{pinModal.classList.remove("hide");pinTitle.textContent=localStorage.getItem(PINKEY)?"Enter Parent PIN":"Create Parent PIN";pinInput.value=""};cancelPin.onclick=()=>pinModal.classList.add("hide");pinForm.onsubmit=e=>{e.preventDefault();let p=pinInput.value,old=localStorage.getItem(PINKEY);if(!old){if(!/^\d{4,8}$/.test(p))return pinMsg.textContent="Use 4–8 digits.";localStorage.setItem(PINKEY,p)}else if(p!==old)return pinMsg.textContent="Incorrect PIN.";pinModal.classList.add("hide");document.querySelectorAll("main>section").forEach(x=>x.classList.add("hide"));parent.classList.remove("hide")};changePin.onclick=()=>{let p=prompt("New 4–8 digit PIN");if(/^\d{4,8}$/.test(p||""))localStorage.setItem(PINKEY,p)};
-eventForm.onsubmit=async e=>{e.preventDefault();let r=await db.from("family_events").insert({event_date:eventDate.value,title:eventText.value.trim()});if(r.error)alert(r.error.message);else{e.target.reset();load()}};
+parentBtn.onclick=()=>{
+  pinModal.classList.remove("hide");
+  pinTitle.textContent="Enter Parent PIN";
+  pinInput.value="";
+  pinMsg.textContent="";
+};
+
+cancelPin.onclick=()=>pinModal.classList.add("hide");
+
+pinForm.onsubmit=async e=>{
+  e.preventDefault();
+
+  let p=pinInput.value;
+
+  const {data,error}=await db
+    .from("family_settings")
+    .select("parent_pin")
+    .order("id")
+    .limit(1)
+    .single();
+
+  if(error){
+    pinMsg.textContent="Could not check PIN.";
+    console.error(error);
+    return;
+  }
+
+  if(p!==data.parent_pin){
+    pinMsg.textContent="Incorrect PIN.";
+    return;
+  }
+
+  pinModal.classList.add("hide");
+  document.querySelectorAll("main>section").forEach(x=>x.classList.add("hide"));
+  parent.classList.remove("hide");
+};
+
+changePin.onclick=async()=>{
+  let p=prompt("New 4–8 digit PIN");
+
+  if(!/^\d{4,8}$/.test(p||"")){
+    alert("PIN must be 4–8 digits.");
+    return;
+  }
+
+  const {data,error}=await db
+    .from("family_settings")
+    .select("id")
+    .order("id")
+    .limit(1)
+    .single();
+
+  if(error){
+    alert("Could not change PIN.");
+    console.error(error);
+    return;
+  }
+
+  const result=await db
+    .from("family_settings")
+    .update({parent_pin:p})
+    .eq("id",data.id);
+
+  if(result.error){
+    alert("Could not change PIN.");
+    console.error(result.error);
+    return;
+  }
+
+  alert("PIN changed.");
+};eventForm.onsubmit=async e=>{e.preventDefault();let r=await db.from("family_events").insert({event_date:eventDate.value,title:eventText.value.trim()});if(r.error)alert(r.error.message);else{e.target.reset();load()}};
 ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].forEach((x,i)=>dayChecks.insertAdjacentHTML("beforeend",`<label><input type=checkbox value=${i} checked> ${x}</label>`));choreForm.onsubmit=async e=>{e.preventDefault();let days=[...dayChecks.querySelectorAll("input:checked")].map(x=>+x.value),r=await db.from("chores").insert({name:choreName.value.trim(),points:+choreWeight.value,helper_name:helperName.value.trim()||null,active_days:days,personal:false,active:true,sort_order:CH.length+1});if(r.error)alert(r.error.message);else{e.target.reset();load()}};
 db.channel("family").on("postgres_changes",{event:"*",schema:"public"},()=>load()).subscribe();if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");load();
 </script></body></html>
